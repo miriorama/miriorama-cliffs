@@ -1,0 +1,44 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Colors</title>
+
+    <style>
+        body {
+            margin: 0;
+        }
+        .palette {
+            display: flex;
+            width: 100vw;
+            height: 20vh;
+            margin-bottom: 100px;
+        }
+        .color {
+            height: 100%;
+            width: 20%;
+        }
+    </style>
+</head>
+<body>
+    <div id="palettes" class="palettes"></div>
+    <script src="palettes.js"></script>
+    <script>
+        let $palettes = document.getElementById('palettes');
+        palettes.forEach(el => {
+            let $palette = document.createElement('div');
+            $palette.classList.add('palette');
+
+            el.forEach(color => {
+                let $color = document.createElement('div');
+                $color.style.background = color;
+                $color.classList.add('color');
+
+                $palette.appendChild($color);
+            });
+
+            $palettes.appendChild($palette);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,166 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="palettes.js"></script>
+
+    <style>
+        html, body {
+  height: 100%;
+  margin: 0;
+}
+#c {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+    </style>
+</head>
+<body>
+    <canvas id="c"></canvas>
+    <script type="module">
+        import * as THREE from 'https://threejsfundamentals.org/threejs/resources/threejs/r119/build/three.module.js';
+        import {EffectComposer} from 'https://threejsfundamentals.org/threejs/resources/threejs/r119/examples/jsm/postprocessing/EffectComposer.js';
+        import {RenderPass} from 'https://threejsfundamentals.org/threejs/resources/threejs/r119/examples/jsm/postprocessing/RenderPass.js';
+        import {BloomPass} from 'https://threejsfundamentals.org/threejs/resources/threejs/r119/examples/jsm/postprocessing/BloomPass.js';
+        import {FilmPass} from 'https://threejsfundamentals.org/threejs/resources/threejs/r119/examples/jsm/postprocessing/FilmPass.js';
+
+        var scene = new THREE.Scene();
+
+        function main() {
+        const canvas = document.querySelector('#c');
+        const renderer = new THREE.WebGLRenderer({canvas});
+
+
+		let palette = random(0, palettes.length - 1);
+		let colors = [palettes[palette][0], palettes[palette][1]];
+
+        
+        scene.background = new THREE.Color(colors[0]);
+
+        let camera = new THREE.OrthographicCamera(-20, 20, 20, -20, 0.1, 2000);
+        camera.position.set(0, -15, 100);
+        
+        scene.add(camera);
+
+        var light = new THREE.AmbientLight(colors[1], 1);
+        scene.add(light);
+
+        var light = new THREE.PointLight(colors[0], 1);
+        light.position.set(-50,0,50);
+        scene.add(light);
+
+        const boxWidth = 1;
+        const boxHeight = 1;
+        const boxDepth = 1;
+        const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
+
+        const composer = new EffectComposer(renderer);
+        composer.addPass(new RenderPass(scene, camera));
+
+        const bloomPass = new BloomPass(
+            1,    // strength
+            25,   // kernel size
+            4,    // sigma ?
+            256,  // blur render target resolution
+        );
+        //composer.addPass(bloomPass);
+
+        const filmPass = new FilmPass(
+            0.35,   // noise intensity
+            0.025,  // scanline intensity
+            648,    // scanline count
+            false,  // grayscale
+        );
+        filmPass.renderToScreen = true;
+        composer.addPass(filmPass);
+
+        function resizeRendererToDisplaySize(renderer) {
+            const canvas = renderer.domElement;
+            const width = canvas.clientWidth;
+            const height = canvas.clientHeight;
+            const needResize = canvas.width !== width || canvas.height !== height;
+            if (needResize) {
+            renderer.setSize(width, height, false);
+            }
+            return needResize;
+        }
+
+        let then = 0;
+        function render(now) {
+            now *= 0.001;  // convert to seconds
+            const deltaTime = now - then;
+            then = now;
+
+            if (resizeRendererToDisplaySize(renderer)) {
+                const canvas = renderer.domElement;
+                camera.aspect = canvas.clientWidth / canvas.clientHeight;
+                camera.updateProjectionMatrix();
+                composer.setSize(canvas.width, canvas.height);
+            }
+            draw();
+
+            composer.render(deltaTime);
+
+            //requestAnimationFrame(render);
+        }
+
+        requestAnimationFrame(render);
+        }
+
+        main();
+
+		function random(min, max) {
+			return THREE.Math.randInt(min, max)
+		}
+        
+		function draw() {
+			let shape = new THREE.Shape();
+			let w = 50, h =50;
+			shape.moveTo(0, 0)
+			let nPoints = 5;
+			let step = h / nPoints;
+			
+			let points = [];
+			points.push([0, 0, 0, 0, 0, 0]);
+			let i = 1;
+			for (let ys = 0; ys <= h; ys += step) {
+				let x=0+random(-step, step)
+				let y=ys
+
+				let x1=points[i-1][4]+step/2
+				let y1=y-step/2
+
+				let x2=x-step/2
+				let y2=y-step/2
+
+				points.push([x1, y1, x2, y2, x, y]);
+				
+				i++;
+			}
+			
+			for (let i = 1; i < points.length; i += 1) {
+				shape.bezierCurveTo(points[i][0], points[i][1], points[i][2], points[i][3], points[i][4], points[i][5]);
+			}
+
+			shape.lineTo(w, h)			
+			shape.lineTo(w, 0)
+			shape.lineTo(0, 0)
+			
+			let extrudeSettings = { depth: 1000, bevelEnabled: true, curveSegments:100, bevelSegments: 0, steps: 100, bevelSize: 0, bevelThickness: 0 };
+			let geometry = new THREE.ExtrudeBufferGeometry(shape, extrudeSettings);
+
+			//geometry = new THREE.SphereGeometry(1, 10, 100);
+			let material = new THREE.MeshLambertMaterial({color: '#fff', flatShading: true });
+			let mesh = new THREE.Mesh(geometry, material);
+			mesh.position.set(-5, -w/2, -1000);
+			//mesh.rotation.set(0, 0, 0);
+			//mesh.scale.set(s, s, s);
+			scene.add(mesh);
+		}
+
+    </script>
+</body>
+</html>

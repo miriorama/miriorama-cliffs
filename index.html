@@ -4,9 +4,6 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<meta http-equiv="X-UA-Compatible" content="ie=edge">
 	<title>Miriorama Cliffs</title>
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/110/three.min.js"></script>
-	<script src="orbit.js"></script>
-	<script src="palettes.js"></script>
 	<style>
 		body,
 		html {
@@ -19,10 +16,6 @@
 			align-items: center;
 		}
 
-		div {
-			display: inline-block;
-		}
-
 		canvas {
 			width: 500px;
 			height: 500px	
@@ -31,111 +24,67 @@
 </head>
 
 <body>
+	<script id="vertexShader" type="x-shader/x-vertex">
+		varying vec2 vUv;
+		void main() {
+		  vUv = uv;
+		  gl_Position = projectionMatrix 
+			* modelViewMatrix 
+			* vec4( position, 1.0 );
+		}
+	  </script>
+	  
+	  <script id="fragmentShader" type="x-shader/x-fragment">
+		uniform float amount;
+		uniform sampler2D tDiffuse;
+		uniform float amount1;
+		varying vec2 vUv;
+	  
+		float random( vec2 p )
+		{
+		  vec2 K1 = vec2(
+			23.1406926327792690057290863679485473802661062426002119934450464095243423506904527835169719970675492, // e^pi (Gelfond's constant)
+			2.6651441426902251886502972498731 // 2^sqrt(2) (Gelfond Schneider constant)
+		  );
+		  return fract( cos( dot(p,K1) ) * 12345.6789 );
+		}
+
+		highp float rand(vec2 co)
+		{
+			highp float a = 12.9898;
+			highp float b = 78.233;
+			highp float c = 43758.5453;
+			highp float dt= dot(co.xy ,vec2(a,b));
+			highp float sn= mod(dt,3.14);
+			return fract(sin(sn) * c);
+		}
+	  
+		void main() {
+	  
+		  vec4 color = texture2D( tDiffuse, vUv );
+		  vec2 uvRandom = vUv;
+		  uvRandom.y *= rand(vec2(uvRandom.y,amount));
+		  color.rgb += rand(uvRandom)*amount1;
+		  gl_FragColor = vec4( color  );
+		}
+	  </script>
+
+
 	<div id="container"></div>
-	<script>
-		var container;
-		var camera, scene, renderer, controls;
-		let width = 500;
-		let height = 500;
 
-		let palette = random(0, palettes.length - 1);
-		let colors = [palettes[palette][0], palettes[palette][1]];
 
-		init();
-		draw();
-		animate();
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/110/three.min.js"></script>
+	<script src="orbit.js"></script>
+	<script src="palettes.js"></script>
+	<script src='https://cdn.rawgit.com/mrdoob/three.js/dev/examples/js/shaders/CopyShader.js'></script>
+	<script src='https://cdn.rawgit.com/mrdoob/three.js/dev/examples/js/postprocessing/EffectComposer.js'></script>
+	<script src='https://cdn.rawgit.com/mrdoob/three.js/dev/examples/js/postprocessing/ShaderPass.js'></script>
+	<script src='https://cdn.rawgit.com/mrdoob/three.js/dev/examples/js/postprocessing/RenderPass.js'></script>
+	<script src='chroma.min.js'></script>
+	<script type="text/javascript" src="dat.gui.min.js"></script>
+	<script src="THREE.Highres.min.js"></script>
+	<script src='main.js'></script>
 
-		function init() {
-			renderer = new THREE.WebGLRenderer({ antialias: true });
-			renderer.setPixelRatio(window.devicePixelRatio);
-			renderer.setSize(width, height);
-
-			container = document.createElement('div');
-			document.body.appendChild(container);
-			container.appendChild(renderer.domElement);
-
-			scene = new THREE.Scene();
-			scene.background = new THREE.Color(colors[0]);
-
-			camera = new THREE.OrthographicCamera(-20, 20, 20, -20, 0.1, 2000);
-			camera.position.set(0, -15, 100);
-			
-			scene.add(camera);
-
-			var light = new THREE.AmbientLight(colors[1], 1);
-			scene.add(light);
-
-			var light = new THREE.PointLight(colors[0], 1);
-			light.position.set(-50,0,50);
-			scene.add(light);
-
-			//var axesHelper = new THREE.AxesHelper(10);
-			//scene.add(axesHelper);
-
-			controls = new THREE.OrbitControls(camera, renderer.domElement);
-			controls.update();
-		}
-
-		function random(min, max) {
-			return THREE.Math.randInt(min, max)
-		}
-
-		function draw() {
-			let shape = new THREE.Shape();
-			let w = 50, h =50;
-			shape.moveTo(0, 0)
-			let nPoints = 5;
-			let step = h / nPoints;
-			
-			let points = [];
-			points.push([0, 0, 0, 0, 0, 0]);
-			let i = 1;
-			for (let ys = 0; ys <= h; ys += step) {
-				let x=0+random(-step, step)
-				let y=ys
-
-				let x1=points[i-1][4]+step/2
-				let y1=y-step/2
-
-				let x2=x-step/2
-				let y2=y-step/2
-
-				points.push([x1, y1, x2, y2, x, y]);
-				
-				i++;
-			}
-			
-			for (let i = 1; i < points.length; i += 1) {
-				shape.bezierCurveTo(points[i][0], points[i][1], points[i][2], points[i][3], points[i][4], points[i][5]);
-			}
-
-			shape.lineTo(w, h)			
-			shape.lineTo(w, 0)
-			shape.lineTo(0, 0)
-			
-			let extrudeSettings = { depth: 1000, bevelEnabled: true, curveSegments:100, bevelSegments: 0, steps: 100, bevelSize: 0, bevelThickness: 0 };
-			geometry = new THREE.ExtrudeBufferGeometry(shape, extrudeSettings);
-
-			//geometry = new THREE.SphereGeometry(1, 10, 100);
-			let material = new THREE.MeshLambertMaterial({color: '#fff', flatShading: true });
-			let mesh = new THREE.Mesh(geometry, material);
-			mesh.position.set(-5, -w/2, -1000);
-			//mesh.rotation.set(0, 0, 0);
-			//mesh.scale.set(s, s, s);
-			scene.add(mesh);
-		}
-		
-		function render() {
-			renderer.render(scene, camera);
-		}
-
-		
-
-		function animate() {
-			requestAnimationFrame(animate);
-			controls.update();
-			render();
-		}
-	</script>
+	
 </body>
 </html>
